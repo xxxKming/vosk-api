@@ -688,13 +688,12 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
         MinimumBayesRisk mbr(aligned_nclat, mbr_options);
         const vector<BaseFloat> &conf = mbr.GetOneBestConfidences();
         const vector<int32> &word_ids = mbr.GetOneBest();
-        const vector<pair<int32, int32> > &times = mbr.GetOneBestTimes();
+        const vector<pair<BaseFloat, BaseFloat> > &times = mbr.GetOneBestTimes();
   
         int size = word_ids.size();
   
         stringstream text;
         json::JSON entry;
-        float total_conf = 0.0;
         int phone_ptr=0;
   
         for (int i = 0; i < size; i++) {
@@ -704,7 +703,6 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
                 word["word"] = model_->word_syms_->Find(word_ids[i]);
                 word["start"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].first) * 0.03;
                 word["end"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].second) * 0.03;
-                total_conf += conf[i];
                 entry["result"].append(word);
             }
     
@@ -717,7 +715,6 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
                 word["word"] = model_->word_syms_->Find(word_ids[i]);
                 word["start"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].first) * 0.03;
                 word["end"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].second) * 0.03;
-                total_conf += conf[i];
     
                 //Add phone info to json if phone symbol table is provided
                 if (model_->phone_syms_loaded_ && (result_opts_ == "phones")){  
@@ -764,9 +761,17 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
                 }
             }       
         }
+
+        std::vector<int32> words;
+        std::vector<int32> begin_times;
+        std::vector<int32> lengths;
+        CompactLattice::Weight weight;
+
+        CompactLatticeToWordAlignmentWeight(aligned_nclat, &words, &begin_times, &lengths, &weight);
+        float likelihood = -(weight.Weight().Value1() + weight.Weight().Value2());
   
         entry["text"] = text.str();
-        entry["confidence"]= total_conf;
+        entry["confidence"]= likelihood;
         obj["alternatives"].append(entry);
     }
 
