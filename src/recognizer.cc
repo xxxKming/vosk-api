@@ -725,7 +725,7 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
                     kaldi::BaseFloat phone_end_time = 0.0;
                             
                     //If there are silences without phone output (since they are coming from different places) then set the label and timestamps
-                    if (words[i] == 0 && phoneme_labels[phone_ptr][0] != "SIL"){
+                    if (word_ids[i] == 0 && phoneme_labels[phone_ptr][0] != "SIL"){
                         word["phone_label"].append( "SIL" );
                         phone_start_time=samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].first) * 0.03;
                         phone_end_time = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].second) * 0.03;
@@ -736,7 +736,6 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
                     //Else add the information generated from ComputePhoneInfo to results
                     else {
                         for ( auto phone: phoneme_labels[phone_ptr]){
-    
                             word["phone_label"].append( phone );
                         }                               
                         for (int x=0; x < phone_lengths[phone_ptr].size(); x++){
