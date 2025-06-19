@@ -688,7 +688,7 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
         MinimumBayesRisk mbr(aligned_nclat, mbr_options);
         const vector<BaseFloat> &conf = mbr.GetOneBestConfidences();
         const vector<int32> &word_ids = mbr.GetOneBest();
-        const vector<pair<BaseFloat, BaseFloat> > &times = mbr.GetOneBestTimes();
+        const vector<pair<int32, int32> > &times = mbr.GetOneBestTimes();
   
         int size = word_ids.size();
   
