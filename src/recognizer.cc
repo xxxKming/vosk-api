@@ -520,6 +520,11 @@ const char *Recognizer::MbrResult(CompactLattice &rlat)
             word["word"] = model_->word_syms_->Find(word_ids[i]);
             word["start"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].first) * 0.03;
             word["end"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + times[i].second) * 0.03;
+            word["debug_samples_round_start"] = samples_round_start_;
+            word["debug_sample_frequencey"] = sample_frequency_;
+            word["debug_frame_offset"] = frame_offset_;
+            word["debug_start"] = times[i].first;
+            word["debug_end"] = times[i].second;
             word["conf"] = conf[i];
 
             //Add phone info to json if phone symbol table is provided
