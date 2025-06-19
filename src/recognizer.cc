@@ -719,7 +719,7 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
                 word["debug_sample_frequencey"] = sample_frequency_;
                 word["debug_frame_offset"] = frame_offset_;
                 word["debug_start"] = times[i].first;
-                word["debug_end"] = times[i].end;
+                word["debug_end"] = times[i].second;
                 
                 //Add phone info to json if phone symbol table is provided
                 if (model_->phone_syms_loaded_ && (result_opts_ == "phones")){  
