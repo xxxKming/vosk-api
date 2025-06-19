@@ -679,8 +679,19 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
       CompactLatticeToWordAlignmentWeight(aligned_nclat, &words, &begin_times, &lengths, &weight);
       float likelihood = -(weight.Weight().Value1() + weight.Weight().Value2());
 
+      std::vector<std::vector<std::string> > phoneme_labels;
+      std::vector<std::vector<int32> > phone_lengths;
+      int phon_vec_size = 1;
+
+      if (model_->phone_syms_loaded_ && (result_opts_ == "phones")){  
+          //Compute phone info if phone symbol table is provided          
+          ComputePhoneInfo(*model_->trans_model_, aligned_nclat, *model_->word_syms_, *model_->phone_symbol_table_, &phoneme_labels, &phone_lengths);
+          phon_vec_size = phoneme_labels.size();
+      }
+
       stringstream text;
       json::JSON entry;
+      int phone_ptr=0;
 
       for (int i = 0, first = 1; i < words.size(); i++) {
         json::JSON word;
@@ -693,12 +704,69 @@ const char *Recognizer::NbestResult(CompactLattice &clat)
             entry["result"].append(word);
         }
 
+         //When printing silences some extra silence words that we call "gaps" that have length of 0 seconds 
+        //get printed out so we filter them out
+        //It is possible to have trailing silences in the word output that are not present in the phone output so we 
+        //filter them to generate consistent outputs
+        if ((samples_round_start_ / sample_frequency_ + (frame_offset_ + (lengths[i])) * 0.03) > 0.0 && phone_ptr < phon_vec_size) {
+            
+            word["word"] = model_->word_syms_->Find(words[i]);
+            word["start"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + begin_times[i]) * 0.03;
+            word["end"] = samples_round_start_ / sample_frequency_ + (frame_offset_ + begin_times[i] + lengths[i]) * 0.03;
+
+            //Add phone info to json if phone symbol table is provided
+            if (model_->phone_syms_loaded_ && (result_opts_ == "phones")){  
+                kaldi::BaseFloat phone_start_time = 0.0;
+                kaldi::BaseFloat phone_end_time = 0.0;
+                        
+                //If there are silences without phone output (since they are coming from different places) then set the label and timestamps
+                if (words[i] == 0 && phoneme_labels[phone_ptr][0] != "SIL"){
+                    word["phone_label"].append( "SIL" );
+                    phone_start_time=samples_round_start_ / sample_frequency_ + (frame_offset_ + begin_times[i]) * 0.03;
+                    phone_end_time = samples_round_start_ / sample_frequency_ + (frame_offset_ + begin_times[i] + lengths[i]) * 0.03;
+                    word["phone_start"].append( phone_start_time );
+                    word["phone_end"].append( phone_end_time );
+                }
+
+                //Else add the information generated from ComputePhoneInfo to results
+                else {
+                    for ( auto phone: phoneme_labels[phone_ptr]){
+
+                        word["phone_label"].append( phone );
+                    }                               
+                    for (int x=0; x < phone_lengths[phone_ptr].size(); x++){
+                        if (x==0){
+                            phone_start_time=samples_round_start_ / sample_frequency_ + (frame_offset_ + begin_times[i]) * 0.03;
+                            phone_end_time = phone_start_time + (phone_lengths[phone_ptr][x]) * 0.03;
+                        }
+                        else{
+                            phone_start_time = phone_end_time;
+                            phone_end_time = phone_start_time + (phone_lengths[phone_ptr][x]) * 0.03;
+                        }
+                        word["phone_start"].append( phone_start_time );
+                        word["phone_end"].append( phone_end_time );
+                    }               
+                    phone_ptr += 1;
+                }                
+            }
+            
+            entry["result"].append(word);
+
+            if (words[i] != 0){ // Don't print silence symbols
+                if (i) {
+                    text << " ";
+                }
+                text << model_->word_syms_->Find(words[i]); 
+            }
+        }       
+        else {
         if (first)
           first = 0;
         else
           text << " ";
 
         text << model_->word_syms_->Find(words[i]);
+        }
       }
 
       entry["text"] = text.str();
